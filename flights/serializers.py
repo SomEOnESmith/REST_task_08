@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-
+from django.utils import timezone 
 from .models import Flight, Booking, Profile
 
 
@@ -11,15 +11,23 @@ class FlightSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(serializers.ModelSerializer):
+	flight = serializers.SlugRelatedField(
+		read_only = True,
+		slug_field = 'destination' )
 	class Meta:
 		model = Booking
 		fields = ['flight', 'date', 'id']
 
 
 class BookingDetailsSerializer(serializers.ModelSerializer):
+	total = serializers.SerializerMethodField()
+	flight = FlightSerializer()
 	class Meta:
 		model = Booking
-		fields = ['flight', 'date', 'passengers', 'id']
+		fields = ['flight', 'date', 'passengers', 'id', 'total']
+	def get_total(self , obj):
+		return obj.passengers * obj.flight.price
+
 
 
 class AdminUpdateBookingSerializer(serializers.ModelSerializer):
@@ -51,8 +59,37 @@ class RegisterSerializer(serializers.ModelSerializer):
         return validated_data
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
+
 class ProfileSerializer(serializers.ModelSerializer):
+	user = serializers.SerializerMethodField()
+	past_bookings = serializers.SerializerMethodField()
+	tier = serializers.SerializerMethodField()
 	class Meta:
 		model = Profile
-		fields = ['user', 'miles']
+		fields = [ 'miles', 'past_bookings', 'tier','user']
+	def get_user(self , obj):
+		user = obj.user
+		return UserSerializer(user).data
+
+	def get_past_bookings(self , obj):
+		past_bookings = obj.user.bookings.filter(date__lt =timezone.now() )
+		return BookingSerializer(past_bookings, many=True).data
+
+	def get_tier(self , obj):
+		if obj.miles < 10000:
+			return 'Blue'
+		elif 59999 >= obj.miles >=10000 :
+			return 'Silver'
+		elif 99999 >= obj.miles >=60000 :
+			return 'Gold'
+		elif obj.miles >=100000 :
+			return 'Platinum' 
+
+
+
 

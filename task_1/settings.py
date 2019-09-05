@@ -128,4 +128,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+from datetime import timedelta
 
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=5),
+
+}
